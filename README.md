@@ -1,5 +1,7 @@
 # audio_recording_python
 웹 브라우저를 이용하여 음성을 녹음하고 서버에 저장 후 텍스트를 변환하여 호출한다.
+모바일, 태블릿에서는 사용불가
+PC에서 크롬 브라우저에서만 마이크 권한을 허용하여 사용 할 수 있다.
 
 # python 필요 라이브러리
 pip3 install flask flask_socketio flask_sslify pydub SpeechRecognition
