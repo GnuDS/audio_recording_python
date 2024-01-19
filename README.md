@@ -7,7 +7,7 @@ pip3 install flask flask_socketio flask_sslify pydub SpeechRecognition
 # dockerfile 빌드
 docker build -t audio_recording_python .
 
-# docker 실행 (-v 볼륨으로 본인의 환경에 맞게 수정 및 제외한다)
+# docker 실행 (-v 볼륨으로 본인의 환경에 맞게 수정 및 제외한다)
 docker run -d -p 0.0.0.0:5000:443/tcp --name audio_recording_python -v /home/python/src:/app/src audio_recording_python
 
 
