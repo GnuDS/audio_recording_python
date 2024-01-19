@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>음성 녹음기</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+    <style>
+
+        :root{
+            --primary-100:#8FBF9F;
+            --primary-200:#68a67d;
+            --primary-300:#24613b;
+            --accent-100:#F18F01;
+            --accent-200:#833500;
+            --text-100:#353535;
+            --text-200:#5f5f5f;
+            --bg-100:#F5ECD7;
+            --bg-200:#ebe2cd;
+            --bg-300:#c2baa6;
+            --date:#5f5f5f;
+        }
+
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-100), var(--bg-200));
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            background-color: var(--bg-200);
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        }
+
+        h1 {
+            color: #353535;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .recording {
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .timestamp {
+            font-size: 0.9em;
+            color: #666;
+            text-align: right;
+        }
+
+        .content {
+            margin-top: 5px;
+            font-size: 1.0em;
+            color: var(--text-100);
+            text-align: left;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                width: 90%;
+                margin: 20px auto;
+            }
+
+            .recording {
+                padding: 10px;
+            }
+        }
+
+        .buttons {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            font-size: 1em;
+            color: #5f5f5f;
+            background-color: #8FBF9F;
+            border: 1px solid #8FBF9F;
+            backdrop-filter: blur(8px);
+            border-radius: 5px;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        button:active {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>기록 다이어리</h1>
+        <div class="buttons">
+            <button id="startRecord">기록</button>
+            <button id="stopRecord">중지</button>
+            <button onclick="location.reload();">새로고침</button>
+        </div>
+        {% for item in ad %}
+        <div class="recording">
+            <audio controls>
+                <source src="{{ url_for('static', filename=item.file_path) }}" type="audio/wav">
+            </audio>
+            <div class="timestamp" data-id="{{ item.file_id }}">{{ item.file_date }}</div>
+            <div class="content">{{ item.file_content }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        var pcChrome = isPCChrome();
+        var socket = io.connect('https://' + document.domain + ':' + location.port);
+        var mediaRecorder;
+        var audioChunks = [];
+
+        if(pcChrome) {
+
+            document.getElementById("startRecord").onclick = () => {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        mediaRecorder = new MediaRecorder(stream);
+                        mediaRecorder.start();
+
+                        mediaRecorder.ondataavailable = (e) => {
+                            audioChunks.push(e.data);
+                        };
+
+                        mediaRecorder.onstop = () => {
+                            socket.emit('audio', audioChunks, (response) => {
+                                console.log('서버 응답 : ' , response)
+                            });
+                            audioChunks = [];
+                            stream.getTracks().forEach(track => track.stop());
+
+                            setTimeout(() => {
+                                location.reload();
+                            }, 3000);
+                        };
+                    });
+            };
+
+            document.getElementById("stopRecord").onclick = () => {
+                mediaRecorder.stop();
+            };
+
+            const recordingElements = document.querySelectorAll(".timestamp");
+            recordingElements.forEach((element) => {
+                element.addEventListener("click", (e) => {
+                    const dataId = element.getAttribute("data-id");
+                    socket.emit('del', dataId);
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                });
+            });
+        }
+
+        // PC 크롬 체크
+        function isPCChrome() {
+            var userAgent = navigator.userAgent;
+            var platform = navigator.platform;
+
+            // Chrome 브라우저 체크 (Opera와 Edge 제외)
+            var isChrome = userAgent.includes('Chrome') && !userAgent.includes('Opera') && !userAgent.includes('Edg');
+
+            // PC 플랫폼 체크 (Windows, Mac, Linux)
+            var isPC = platform.startsWith('Win') || platform.startsWith('Mac') || platform.startsWith('Linux');
+
+            return isChrome && isPC;
+        }
+        
+    </script>
+</body>
+</html>
